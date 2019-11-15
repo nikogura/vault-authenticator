@@ -21,7 +21,7 @@ const CLIENT_TIMEOUT = 500 * time.Millisecond
 
 // IAMLogin actually performs the AWS IAM login to vault, and returns a logged in vault client
 func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
-	VerboseOutput(verbose, "Attempting IAM Login...\n")
+	verboseOutput(verbose, "Attempting IAM Login...\n")
 
 	if os.Getenv("AWS_REGION") == "" {
 		region := GetAwsRegion(verbose)
@@ -37,7 +37,9 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 	}
 
 	if config.Address == "https://127.0.0.1:8200" {
-		config.Address = DEFAULT_VAULT_ADDR
+		if VAULT_SITE_CONFIG.Address != "" {
+			config.Address = VAULT_SITE_CONFIG.Address
+		}
 	}
 
 	stsSvc := sts.New(session.New())
@@ -81,8 +83,8 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 
 	vaultUrl := fmt.Sprintf("%s/v1/auth/aws/login", vaultAddress)
 
-	VerboseOutput(verbose, "  vault url is %s", vaultUrl)
-	VerboseOutput(verbose, "  making request...")
+	verboseOutput(verbose, "  vault url is %s", vaultUrl)
+	verboseOutput(verbose, "  making request...")
 
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
@@ -90,7 +92,7 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  Response code: %d", resp.StatusCode)
+	verboseOutput(verbose, "  Response code: %d", resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -125,7 +127,7 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  auth data successfully parsed")
+	verboseOutput(verbose, "  auth data successfully parsed")
 
 	token, ok := auth["client_token"].(string)
 	if !ok {
@@ -133,7 +135,7 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  vault token extracted")
+	verboseOutput(verbose, "  vault token extracted")
 
 	client, err = api.NewClient(config)
 	if err != nil {
@@ -143,7 +145,7 @@ func IAMLogin(rolename string, verbose bool) (client *api.Client, err error) {
 
 	client.SetToken(token)
 
-	VerboseOutput(verbose, "Success!\n\n")
+	verboseOutput(verbose, "Success!\n\n")
 
 	return client, err
 }
@@ -201,13 +203,13 @@ func GetAzFargate(c chan string, verbose bool) {
 	resp, err := client.Get(metadataUrl)
 	if err != nil {
 		err = errors.Wrap(err, "failed to query task metadata v3 service")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
 	if resp.StatusCode != 200 {
 		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -216,7 +218,7 @@ func GetAzFargate(c chan string, verbose bool) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "failed to read response body")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -225,7 +227,7 @@ func GetAzFargate(c chan string, verbose bool) {
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		err = errors.Wrap(err, "failed to unmarshal json from response")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -250,13 +252,13 @@ func GetAzEcs(c chan string, verbose bool) {
 	resp, err := client.Get(metadataUrl)
 	if err != nil {
 		err = errors.Wrap(err, "failed to query ECS task metadata service")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
 	if resp.StatusCode != 200 {
 		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -265,7 +267,7 @@ func GetAzEcs(c chan string, verbose bool) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "failed to read response body")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -274,7 +276,7 @@ func GetAzEcs(c chan string, verbose bool) {
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		err = errors.Wrap(err, "failed to unmarshal json from response")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -298,13 +300,13 @@ func GetAzEc2(c chan string, verbose bool) {
 	resp, err := client.Get(metadataUrl)
 	if err != nil {
 		err = errors.Wrap(err, "failed to query EC2 metadata service")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
 	if resp.StatusCode != 200 {
 		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 
@@ -313,7 +315,7 @@ func GetAzEc2(c chan string, verbose bool) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "failed to read response body")
-		VerboseOutput(verbose, err.Error())
+		verboseOutput(verbose, err.Error())
 		return
 	}
 

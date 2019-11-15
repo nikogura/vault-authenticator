@@ -17,6 +17,7 @@ import (
 )
 
 const DEFAULT_KEY_FILE = ".ssh/id_rsa"
+const DBT_USER_CONFIG_FILE = ".dbt/conf/user.json"
 
 // LocalUsername returns the current user's username.
 func LocalUsername() (username string, err error) {
@@ -90,7 +91,7 @@ func FileCopy(src, dst string) error {
 	return os.Chmod(dst, srcinfo.Mode())
 }
 
-func VerboseOutput(verbose bool, message string, args ...interface{}) {
+func verboseOutput(verbose bool, message string, args ...interface{}) {
 	if verbose {
 		if len(args) == 0 {
 			fmt.Printf("%s\n", message)
@@ -101,8 +102,6 @@ func VerboseOutput(verbose bool, message string, args ...interface{}) {
 		fmt.Printf("%s\n", msg)
 	}
 }
-
-const CONFIG_FILE = ".dbt/conf/user.json"
 
 // UserConfig a struct for storing per-user config when a user's laptop info (username, key location) differs from the defaults
 type UserConfig struct {
@@ -118,7 +117,7 @@ func LoadUserConfig() (config UserConfig, err error) {
 		return config, err
 	}
 
-	configFile := fmt.Sprintf("%s/%s", homeDir, CONFIG_FILE)
+	configFile := fmt.Sprintf("%s/%s", homeDir, DBT_USER_CONFIG_FILE)
 	if _, err := os.Stat(configFile); !os.IsNotExist(err) {
 
 		configBytes, err := ioutil.ReadFile(configFile)
@@ -160,7 +159,7 @@ func SaveUserConfig(config UserConfig) (err error) {
 		log.Fatal("failed to determine home dir")
 	}
 
-	configFile := fmt.Sprintf("%s/%s", homeDir, CONFIG_FILE)
+	configFile := fmt.Sprintf("%s/%s", homeDir, DBT_USER_CONFIG_FILE)
 
 	err = ioutil.WriteFile(configFile, jsonBytes, 0644)
 	if err != nil {

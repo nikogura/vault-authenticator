@@ -55,7 +55,7 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 	var haveExplicitAccess bool
 	var policy string
 
-	VerboseOutput(verbose, "Looking for secrets for %s\n", role)
+	verboseOutput(verbose, "Looking for secrets for %s\n", role)
 
 	// check the policies we can look up based on our token, see if we can get the role requested
 	t, err := client.Auth().Token().LookupSelf()
@@ -66,15 +66,15 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 
 	policies, ok := t.Data["policies"].([]interface{})
 	if ok {
-		VerboseOutput(verbose, "Policies:")
+		verboseOutput(verbose, "Policies:")
 		for _, p := range policies {
-			VerboseOutput(verbose, "  %s", p)
+			verboseOutput(verbose, "  %s", p)
 			pname, ok := p.(string)
 			if ok {
 				if strings.HasPrefix(pname, role) {
 					haveExplicitAccess = true
 					policy = pname
-					VerboseOutput(verbose, "\n  Using policy %s\n\n", role)
+					verboseOutput(verbose, "\n  Using policy %s\n\n", role)
 					break
 				}
 			}
@@ -88,12 +88,12 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 	if !haveExplicitAccess {
 		if env != "" {
 			policy = fmt.Sprintf("%s-%s", role, env)
-			VerboseOutput(verbose, "Environment explicitly overwritten.  This will fail unless principal has admin access.")
+			verboseOutput(verbose, "Environment explicitly overwritten.  This will fail unless principal has admin access.")
 
 		} else {
 			policy = fmt.Sprintf("%s-development", role)
 
-			VerboseOutput(verbose, "This principal does not have explicit access to role %q\nAssuming development environment\n\n", role)
+			verboseOutput(verbose, "This principal does not have explicit access to role %q\nAssuming development environment\n\n", role)
 		}
 	}
 
@@ -135,7 +135,7 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 		}
 	}
 
-	// too complicated to use VerboseOutput()
+	// too complicated to use verboseOutput()
 	if verbose {
 		fmt.Printf("Fetching secrets from the following paths:\n")
 		for _, path := range paths {
@@ -147,7 +147,7 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 
 	// get 'em all and return
 	for _, path := range paths {
-		VerboseOutput(verbose, "Reading path: %s", path)
+		verboseOutput(verbose, "Reading path: %s", path)
 		s, err := client.Logical().Read(path)
 		if err != nil {
 			err = errors.Wrapf(err, "Failed to lookup policy: %s", policy)
@@ -157,22 +157,22 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 		if s != nil {
 			secretData, ok := s.Data["data"].(map[string]interface{})
 			if ok {
-				VerboseOutput(verbose, "  ... it's a v2 secret")
+				verboseOutput(verbose, "  ... it's a v2 secret")
 				// a v2 secret will have a key called 'value' if it's a bare secret
 				// expected output key will be the name of the secret
 				value, ok := secretData["value"]
 				if ok {
-					VerboseOutput(verbose, "    ... and a normal v2 secret")
+					verboseOutput(verbose, "    ... and a normal v2 secret")
 					// get the dir portion of the path, cos the end is the environment
 					dir := filepath.Dir(path)
 					// get the base of that path, which will be the key
 					key := filepath.Base(dir)
 					data[key] = fmt.Sprintf("%s", value)
 				} else { // else it's something special like a TLS Cert/Key
-					VerboseOutput(verbose, "    ... and not a normal v2 secret")
+					verboseOutput(verbose, "    ... and not a normal v2 secret")
 
 					if HasKeys("tls", TLSSecretKeys, secretData, verbose) {
-						VerboseOutput(verbose, "    ... it's a TLS Cert")
+						verboseOutput(verbose, "    ... it's a TLS Cert")
 						keyBase := filepath.Base(path)
 						for _, key := range TLSSecretKeys {
 							keyName := fmt.Sprintf("%s.%s", keyBase, TLSSecretKeyAbbrev[key])
@@ -197,7 +197,7 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 					}
 				}
 			} else {
-				VerboseOutput(verbose, "  ... it's a v1 secret")
+				verboseOutput(verbose, "  ... it's a v1 secret")
 				// v1 secrets expect all keys to be here
 				for k, v := range s.Data {
 					data[k] = v
@@ -205,25 +205,25 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 			}
 		}
 
-		VerboseOutput(verbose, "\n\n")
+		verboseOutput(verbose, "\n\n")
 	}
 
 	return data, err
 }
 
 func HasKeys(typename string, keys []string, data map[string]interface{}, verbose bool) bool {
-	VerboseOutput(verbose, "Checking Secret to see if it's a %s", typename)
+	verboseOutput(verbose, "Checking Secret to see if it's a %s", typename)
 
 	for _, key := range keys {
-		VerboseOutput(verbose, "  ... Looking for %s", key)
+		verboseOutput(verbose, "  ... Looking for %s", key)
 		_, ok := data[key]
 		if !ok {
-			VerboseOutput(verbose, "  Failed to find %s.  Returning False.", key)
+			verboseOutput(verbose, "  Failed to find %s.  Returning False.", key)
 			return false
 		}
 	}
 
-	VerboseOutput(verbose, "  Returning true.")
+	verboseOutput(verbose, "  Returning true.")
 
 	return true
 }

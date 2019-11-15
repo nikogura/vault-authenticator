@@ -7,16 +7,16 @@ import (
 	"os"
 )
 
-const HOST_CERT_PATH = "/etc/vault/host.crt"
-const HOST_KEY_PATH = "/etc/vault/host.key"
+const TLS_CLIENT_CERT_PATH = "/etc/vault/host.crt"
+const TLS_CLIENT_KEY_PATH = "/etc/vault/host.key"
 
 // DetectTls See if we have a certificate and private key in the normal location for a SL host.
 func DetectTls(c chan bool, verbose bool) {
 	// check to see if the key and cert exist
-	if _, err := os.Stat(HOST_KEY_PATH); os.IsNotExist(err) {
+	if _, err := os.Stat(TLS_CLIENT_KEY_PATH); os.IsNotExist(err) {
 		c <- false
 	} else {
-		if _, err := os.Stat(HOST_CERT_PATH); os.IsNotExist(err) {
+		if _, err := os.Stat(TLS_CLIENT_CERT_PATH); os.IsNotExist(err) {
 			c <- false
 		} else {
 			c <- true
@@ -26,10 +26,10 @@ func DetectTls(c chan bool, verbose bool) {
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
 func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
-	VerboseOutput(verbose, "Attempting TLS Login...")
+	verboseOutput(verbose, "Attempting TLS Login...")
 
 	if rolename == "" {
-		VerboseOutput(verbose, "  No rolename given.  Attempting Legacy TLS Auth\n")
+		verboseOutput(verbose, "  No rolename given.  Attempting Legacy TLS Auth\n")
 		return LegacyCertAuth()
 	}
 
@@ -41,15 +41,17 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 	}
 
 	if config.Address == "https://127.0.0.1:8200" {
-		config.Address = DEFAULT_VAULT_ADDR
+		if VAULT_SITE_CONFIG.Address != "" {
+			config.Address = VAULT_SITE_CONFIG.Address
+		}
 	}
 
-	if _, err := os.Stat(CLIENT_CERT_PATH); !os.IsNotExist(err) {
-		if _, err := os.Stat(CLIENT_KEY_PATH); !os.IsNotExist(err) {
+	if _, err := os.Stat(TLS_CLIENT_CERT_PATH); !os.IsNotExist(err) {
+		if _, err := os.Stat(TLS_CLIENT_KEY_PATH); !os.IsNotExist(err) {
 			// We'll try to do cert auth using the host's vault key
 			tlsConfig := api.TLSConfig{
-				ClientCert: HOST_CERT_PATH,
-				ClientKey:  HOST_KEY_PATH,
+				ClientCert: TLS_CLIENT_CERT_PATH,
+				ClientKey:  TLS_CLIENT_KEY_PATH,
 				Insecure:   false,
 			}
 
@@ -61,8 +63,8 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 			loginData["name"] = rolename
 
 			path := "auth/cert/login"
-			VerboseOutput(verbose, "  login path is %s/%s", config.Address, path)
-			VerboseOutput(verbose, "  login role is %s", rolename)
+			verboseOutput(verbose, "  login path is %s/%s", config.Address, path)
+			verboseOutput(verbose, "  login role is %s", rolename)
 
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
@@ -84,15 +86,15 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 
 			client.SetToken(token)
 
-			VerboseOutput(verbose, "Success!\n")
+			verboseOutput(verbose, "Success!\n")
 			return client, err
 
 		} else {
-			err = errors.New(fmt.Sprintf("private key %s does not exist", CLIENT_KEY_PATH))
+			err = errors.New(fmt.Sprintf("private key %s does not exist", TLS_CLIENT_KEY_PATH))
 			return client, err
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("certificate %s does not exist", CLIENT_CERT_PATH))
+		err = errors.New(fmt.Sprintf("certificate %s does not exist", TLS_CLIENT_CERT_PATH))
 		return client, err
 	}
 	return client, err
@@ -108,15 +110,17 @@ func LegacyCertAuth() (client *api.Client, err error) {
 	}
 
 	if config.Address == "https://127.0.0.1:8200" {
-		config.Address = DEFAULT_VAULT_ADDR
+		if VAULT_SITE_CONFIG.Address != "" {
+			config.Address = VAULT_SITE_CONFIG.Address
+		}
 	}
 
-	if _, err := os.Stat(CLIENT_CERT_PATH); !os.IsNotExist(err) {
-		if _, err := os.Stat(CLIENT_KEY_PATH); !os.IsNotExist(err) {
+	if _, err := os.Stat(TLS_CLIENT_CERT_PATH); !os.IsNotExist(err) {
+		if _, err := os.Stat(TLS_CLIENT_KEY_PATH); !os.IsNotExist(err) {
 			// We'll try to do cert auth using the host's vault key
 			tlsConfig := api.TLSConfig{
-				ClientCert: HOST_CERT_PATH,
-				ClientKey:  HOST_KEY_PATH,
+				ClientCert: TLS_CLIENT_CERT_PATH,
+				ClientKey:  TLS_CLIENT_KEY_PATH,
 				Insecure:   false,
 			}
 			config.ConfigureTLS(&tlsConfig)

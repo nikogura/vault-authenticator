@@ -24,14 +24,14 @@ func DetectK8s(c chan bool, verbose bool) {
 
 // K8sLogin Login to Vault from a K8s pod.
 func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client, err error) {
-	VerboseOutput(verbose, "Attempting K8s Login...")
+	verboseOutput(verbose, "Attempting K8s Login...")
 
 	if cluster == "" {
 		err = errors.New("supplied cluster name is blank- cannot auth")
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  to cluster %q...", cluster)
+	verboseOutput(verbose, "  to cluster %q...", cluster)
 
 	config := api.DefaultConfig()
 	err = config.ReadEnvironment()
@@ -41,7 +41,9 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 	}
 
 	if config.Address == "https://127.0.0.1:8200" {
-		config.Address = DEFAULT_VAULT_ADDR
+		if VAULT_SITE_CONFIG.Address != "" {
+			config.Address = VAULT_SITE_CONFIG.Address
+		}
 	}
 
 	jwtBytes, err := ioutil.ReadFile(DEFAULT_TOKEN_PATH)
@@ -50,7 +52,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  successfully read k8s JWT token in pod")
+	verboseOutput(verbose, "  successfully read k8s JWT token in pod")
 
 	//curl -X POST -H "Content-type: application/json" https://vault-prod.inf.scribd.com:8200/v1/auth/k8s-bravo/login -d '{"role": "test-role", "jwt":”<jwt of principal>”}'
 	data := map[string]string{
@@ -70,8 +72,8 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 
 	vaultUrl := fmt.Sprintf("%s/v1/auth/k8s-%s/login", vaultAddress, cluster)
 
-	VerboseOutput(verbose, "  vault url is %s", vaultUrl)
-	VerboseOutput(verbose, "  making request...")
+	verboseOutput(verbose, "  vault url is %s", vaultUrl)
+	verboseOutput(verbose, "  making request...")
 
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
@@ -79,7 +81,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  Response code: %d", resp.StatusCode)
+	verboseOutput(verbose, "  Response code: %d", resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -114,7 +116,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  auth data successfully parsed")
+	verboseOutput(verbose, "  auth data successfully parsed")
 
 	token, ok := auth["client_token"].(string)
 	if !ok {
@@ -122,7 +124,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	VerboseOutput(verbose, "  vault token extracted")
+	verboseOutput(verbose, "  vault token extracted")
 
 	client, err = api.NewClient(config)
 	if err != nil {
@@ -132,7 +134,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 
 	client.SetToken(token)
 
-	VerboseOutput(verbose, "Success!\n")
+	verboseOutput(verbose, "Success!\n")
 
 	return client, err
 }
