@@ -57,6 +57,8 @@ vvDUQ3vSu1z08bly+9tly+nY/ic8aMQWUiAMimBMHqlNOZZ7qITjcNJmbSd6M631
 aPVWibqw91AmWdR+ct8zioSVtzYGjHsXeZIaeRON
 -----END CERTIFICATE-----`
 
+const VAULT_AUTH_FAIL = "vault login fail.  It didn't blow up, but also didn't return a token, either."
+
 // VaultConfig creates a new config for vault, sets VAULT_ADDR if it's not already set, and adds the scribd root CA cert to the trust store.
 func VaultConfig() (config *api.Config, err error) {
 	// read the environment and use that over anything
@@ -228,7 +230,7 @@ func UserLogin(verbose bool) (client *api.Client, err error) {
 		}
 	}
 
-	err = errors.New("login to vault didn't blow up, but also didn't return a token, either.")
+	err = errors.New(VAULT_AUTH_FAIL)
 
 	return client, err
 }
