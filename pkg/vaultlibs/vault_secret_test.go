@@ -11,6 +11,14 @@ func TestSecretsForRole(t *testing.T) {
 	// TODO Implement TestSecretsForRole by uncommenting the code above, and adding some role/ policy data and fetch it to see if we're doing what we expect.
 }
 
+// TODO need tests for GetSecrets
+
+// TODO need tests for ListSecrets
+
+// TODO need tests for CopySecrets
+
+// TODO need tests for MoveSecrets
+
 func TestCrudSecrets(t *testing.T) {
 	inputs := []struct {
 		name   string
