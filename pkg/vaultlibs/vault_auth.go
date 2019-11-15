@@ -71,6 +71,13 @@ func VaultConfig() (config *api.Config, err error) {
 func VaultAuth(rolename string, k8sCluster string, prompt bool, verbose bool) (client *api.Client, err error) {
 	config, err := VaultConfig()
 
+	if verbose {
+		fmt.Printf("Vault Address: %s\n", config.Address)
+		if VAULT_SITE_CONFIG.CACertificate != "" {
+			fmt.Printf("Private CA Cert in use.\n")
+		}
+	}
+
 	client, err = api.NewClient(config)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create vault api client")
