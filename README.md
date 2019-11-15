@@ -1,0 +1,5 @@
+# vaultlibs
+
+https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiRzM0c3hDMVNCSzg0RUUrcEZWckl4ZHpQdHpwcjFsaG5aRzZGRFhVTWNVOXppWS9Wd0EvUm1HNXdsdGwraDVFQXpBd1RxbmY2TU1LZ2laYjFwQWoyR1BrPSIsIml2UGFyYW1ldGVyU3BlYyI6Ikdwd3dkbi9abWYvR0dhVGQiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master
+
+Useful golang funcitons for interacting with Vault
