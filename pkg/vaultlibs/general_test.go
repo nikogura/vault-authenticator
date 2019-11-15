@@ -2,7 +2,6 @@ package vaultlibs
 
 import (
 	"fmt"
-	"github.com/hashicorp/vault/api"
 	"github.com/phayes/freeport"
 	"github.com/scribd/vaulttest/pkg/vaulttest"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,6 @@ import (
 
 var tmpDir string
 var testVault *vaulttest.VaultDevServer
-var rootClient *api.Client
 
 func TestMain(m *testing.M) {
 	setUp()
@@ -50,6 +48,7 @@ func setUp() {
 		// Create normal Secret engines
 		client := testVault.VaultTestClient()
 
+		// 'secret' already exists.  Leaving this commented out code just in case we need to add a second one later
 		//for _, endpoint := range []string{
 		//	"secret",
 		//} {
@@ -86,7 +85,7 @@ func setUp() {
 
 func tearDown() {
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		os.Remove(tmpDir)
+		_ = os.Remove(tmpDir)
 	}
 	testVault.ServerShutDown()
 }

@@ -19,8 +19,7 @@ import (
 const CLIENT_CERT_PATH = "/etc/vault/host.crt"
 const CLIENT_KEY_PATH = "/etc/vault/host.key"
 const VAULT_TOKEN_FILE = ".vault-token"
-const VAULT_AUTH_FAIL = "all auth methods have failed"
-const DEFAULT_VAULT_ADDR = "https://vault-prod.inf.scribd.com:8200"
+const DEFAULT_VAULT_ADDR = "https://vault.corp.scribd.com"
 const VAULT_TOKEN_ENV_VAR = "VAULT_TOKEN"
 const SCRIBD_ROOT_CA_CERT = `-----BEGIN CERTIFICATE-----
 MIIGGjCCBAKgAwIBAgIJAKLKcH1aB0HwMA0GCSqGSIb3DQEBCwUAMIGZMQswCQYD

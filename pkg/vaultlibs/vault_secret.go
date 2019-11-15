@@ -352,7 +352,10 @@ func ListSecrets(client *api.Client, path string) (secret *api.Secret, err error
 
 // PutSecret writes a secret to a path
 func PutSecret(client *api.Client, path string, data map[string]interface{}) (err error) {
-	_, err = client.Logical().Write(path, data)
+	postData := map[string]interface{}{
+		"data": data,
+	}
+	_, err = client.Logical().Write(path, postData)
 	if err != nil {
 		err = errors.Wrapf(err, "failed writing to %s", path)
 	}
