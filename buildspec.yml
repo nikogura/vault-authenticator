@@ -1,0 +1,13 @@
+version: 0.2
+env:
+  variables:
+    VAULT_ADDR: https://vault-prod.inf.scribd.com
+    GOPRIVATE: git.lo,github.com/scribd
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.13
+  build:
+    commands:
+      - go test -v ./...
