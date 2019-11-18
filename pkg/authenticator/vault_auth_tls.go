@@ -41,7 +41,6 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 
 	if _, err := os.Stat(authenticator.TlsClientCrtPath); !os.IsNotExist(err) {
 		if _, err := os.Stat(authenticator.TlsClientKeyPath); !os.IsNotExist(err) {
-			// We'll try to do cert auth using the host's vault key
 			tlsConfig := api.TLSConfig{
 				ClientCert: authenticator.TlsClientCrtPath,
 				ClientKey:  authenticator.TlsClientKeyPath,
