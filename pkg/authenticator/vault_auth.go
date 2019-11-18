@@ -65,7 +65,7 @@ func (a *Authenticator) SetTlsClientKeyPath(path string) {
 }
 
 func (a *Authenticator) SetTlsClientCrtPath(path string) {
-	a.TlsClientKeyPath = path
+	a.TlsClientCrtPath = path
 }
 
 // NewAuthenticator creates a new Authenticator object
