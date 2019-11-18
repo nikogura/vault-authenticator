@@ -29,6 +29,11 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		os.Setenv("AWS_REGION", region)
 	}
 
+	if os.Getenv("AWS_REGION") == "" {
+		err = errors.New("Not running in AWS")
+		return client, err
+	}
+
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
