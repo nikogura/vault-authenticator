@@ -29,8 +29,16 @@ func LDAPLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	client, err = api.NewClient(apiConfig)
 
 	if authenticator.Identifier == "" {
-		err = errors.New("No username.  Cannot authenticate")
-		return client, err
+		username, err := authenticator.UsernameFunc()
+		if err != nil {
+			err = errors.Wrap(err, "failed getting username")
+			return client, err
+		}
+
+		if username == "" {
+			err = errors.New("No username.  Cannot authenticate")
+			return client, err
+		}
 	}
 
 	path := fmt.Sprintf("/auth/ldap/login/%s", authenticator.Identifier)

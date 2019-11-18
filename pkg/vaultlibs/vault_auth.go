@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"os"
+	"os/user"
 )
 
 const VAULT_TOKEN_ENV_VAR = "VAULT_TOKEN"
@@ -22,6 +23,7 @@ type Authenticator struct {
 	AuthMethods   []string
 	Identifier    string
 	Role          string
+	UsernameFunc  func() (username string, err error)
 }
 
 func (a *Authenticator) SetAddress(address string) {
@@ -50,6 +52,29 @@ func (a *Authenticator) SetIdentifier(identifier string) {
 
 func (a *Authenticator) SetRole(role string) {
 	a.Role = role
+}
+
+func (a *Authenticator) SetUsernameFunc(function func() (username string, err error)) {
+	a.UsernameFunc = function
+}
+
+// NewAuthenticator creates a new Authenticator object
+func NewAuthenticator() (authenticator *Authenticator) {
+	authenticator = &Authenticator{
+		UsernameFunc: func() (username string, err error) {
+			userObj, err := user.Current()
+			if err != nil {
+				err = errors.Wrapf(err, "failed to get current user object")
+				return username, err
+			}
+
+			username = userObj.Username
+			return username, err
+
+		},
+	}
+
+	return authenticator
 }
 
 // VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
