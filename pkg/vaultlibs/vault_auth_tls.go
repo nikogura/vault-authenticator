@@ -25,10 +25,10 @@ func DetectTls(c chan bool, verbose bool) {
 }
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
-func TLSLogin(config *VaultConfig) (client *api.Client, err error) {
-	verboseOutput(config.Verbose, "Attempting TLS Login...")
+func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
+	verboseOutput(authenticator.Verbose, "Attempting TLS Login...")
 
-	if config.Role == "" {
+	if authenticator.Role == "" {
 		err = errors.New("No role given.  Cannot auth.")
 		return client, err
 	}
@@ -36,13 +36,13 @@ func TLSLogin(config *VaultConfig) (client *api.Client, err error) {
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
+		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
 		return client, err
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if config.Address != "" {
-			apiConfig.Address = config.Address
+		if authenticator.Address != "" {
+			apiConfig.Address = authenticator.Address
 		}
 	}
 
@@ -60,11 +60,11 @@ func TLSLogin(config *VaultConfig) (client *api.Client, err error) {
 			client, err = api.NewClient(apiConfig)
 
 			loginData := make(map[string]interface{})
-			loginData["name"] = config.Role
+			loginData["name"] = authenticator.Role
 
 			path := "auth/cert/login"
-			verboseOutput(config.Verbose, "  login path is %s/%s", apiConfig.Address, path)
-			verboseOutput(config.Verbose, "  login role is %s", config.Role)
+			verboseOutput(authenticator.Verbose, "  login path is %s/%s", apiConfig.Address, path)
+			verboseOutput(authenticator.Verbose, "  login role is %s", authenticator.Role)
 
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
@@ -86,7 +86,7 @@ func TLSLogin(config *VaultConfig) (client *api.Client, err error) {
 
 			client.SetToken(token)
 
-			verboseOutput(config.Verbose, "Success!\n")
+			verboseOutput(authenticator.Verbose, "Success!\n")
 			return client, err
 
 		} else {

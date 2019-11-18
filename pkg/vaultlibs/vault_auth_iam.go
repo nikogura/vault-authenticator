@@ -20,11 +20,11 @@ import (
 const CLIENT_TIMEOUT = 500 * time.Millisecond
 
 // IAMLogin actually performs the AWS IAM login to vault, and returns a logged in vault client
-func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
-	verboseOutput(config.Verbose, "Attempting IAM Login...\n")
+func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
+	verboseOutput(authenticator.Verbose, "Attempting IAM Login...\n")
 
 	if os.Getenv("AWS_REGION") == "" {
-		region := GetAwsRegion(config.Verbose)
+		region := GetAwsRegion(authenticator.Verbose)
 
 		os.Setenv("AWS_REGION", region)
 	}
@@ -32,13 +32,13 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
+		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
 		return client, err
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if config.Address != "" {
-			apiConfig.Address = config.Address
+		if authenticator.Address != "" {
+			apiConfig.Address = authenticator.Address
 		}
 	}
 
@@ -64,7 +64,7 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 	}
 
 	data := map[string]string{
-		"role":                    config.Role,
+		"role":                    authenticator.Role,
 		"iam_request_body":        base64.StdEncoding.EncodeToString(rBody),
 		"iam_request_url":         base64.StdEncoding.EncodeToString([]byte(req.HTTPRequest.URL.String())),
 		"iam_request_headers":     base64.StdEncoding.EncodeToString(rHeader),
@@ -83,8 +83,8 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 
 	vaultUrl := fmt.Sprintf("%s/v1/auth/aws/login", vaultAddress)
 
-	verboseOutput(config.Verbose, "  vault url is %s", vaultUrl)
-	verboseOutput(config.Verbose, "  making request...")
+	verboseOutput(authenticator.Verbose, "  vault url is %s", vaultUrl)
+	verboseOutput(authenticator.Verbose, "  making request...")
 
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
@@ -92,7 +92,7 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  Response code: %d", resp.StatusCode)
+	verboseOutput(authenticator.Verbose, "  Response code: %d", resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -127,7 +127,7 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  auth data successfully parsed")
+	verboseOutput(authenticator.Verbose, "  auth data successfully parsed")
 
 	token, ok := auth["client_token"].(string)
 	if !ok {
@@ -135,17 +135,17 @@ func IAMLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  vault token extracted")
+	verboseOutput(authenticator.Verbose, "  vault token extracted")
 
 	client, err = api.NewClient(apiConfig)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to create vault client from config")
+		err = errors.Wrapf(err, "failed to create vault client from authenticator")
 		return client, err
 	}
 
 	client.SetToken(token)
 
-	verboseOutput(config.Verbose, "Success!\n\n")
+	verboseOutput(authenticator.Verbose, "Success!\n\n")
 
 	return client, err
 }

@@ -11,33 +11,33 @@ import (
 	"strings"
 )
 
-// UserLogin logs the user into vault via LDAP and obtains a token.  (Really only intended for user usage)
-func UserLogin(config *VaultConfig) (client *api.Client, err error) {
+// LDAPLogin logs the user into vault via LDAP and obtains a token.  (Really only intended for user usage)
+func LDAPLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
+		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
 		return client, err
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if config.Address != "" {
-			apiConfig.Address = config.Address
+		if authenticator.Address != "" {
+			apiConfig.Address = authenticator.Address
 		}
 	}
 
 	client, err = api.NewClient(apiConfig)
 
-	if config.Identifier == "" {
+	if authenticator.Identifier == "" {
 		err = errors.New("No username.  Cannot authenticate")
 		return client, err
 	}
 
-	path := fmt.Sprintf("/auth/ldap/login/%s", config.Identifier)
+	path := fmt.Sprintf("/auth/ldap/login/%s", authenticator.Identifier)
 	data := make(map[string]interface{})
 
-	if config.Verbose {
-		log.Printf("Username: %s", config.Identifier)
+	if authenticator.Verbose {
+		log.Printf("Username: %s", authenticator.Identifier)
 	}
 
 	fmt.Println("")

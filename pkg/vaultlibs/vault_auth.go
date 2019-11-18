@@ -13,24 +13,24 @@ import (
 const VAULT_TOKEN_ENV_VAR = "VAULT_TOKEN"
 const VAULT_AUTH_FAIL = "vault login fail.  It didn't blow up, but also didn't return a token, either."
 
-// VaultConfig A struct for setting fundamental information about how your org connects to Vault without needing to set ENV vars everywhere.  ENV Vars will still trump this value, but in their absence, this is a sane default for your org.
-type VaultConfig struct {
+// Authenticator What handles the authentication to Vault- by whatever supported methods you configure.  Authenticator will try them in order and return the first one that is successful.
+type Authenticator struct {
 	Address       string
 	CACertificate string
 	Prompt        bool
 	Verbose       bool
-	AuthMethods   []*AuthMethod
+	AuthMethods   []string
 	Identifier    string
 	Role          string
 }
 
 type AuthMethod struct {
-	Name          string
-	Authenticator func(config *VaultConfig) (client *api.Client, err error)
+	Name         string
+	Authenticate func(authenticator *Authenticator) (client *api.Client, err error)
 }
 
 // VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
-func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
+func (a *Authenticator) Auth(config *Authenticator) (client *api.Client, err error) {
 	// read the environment and use that over anything
 	apiConfig := api.DefaultConfig()
 
@@ -41,8 +41,8 @@ func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if config.Address != "" {
-			apiConfig.Address = config.Address
+		if a.Address != "" {
+			apiConfig.Address = a.Address
 		}
 	}
 
@@ -52,8 +52,8 @@ func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	if config.CACertificate != "" {
-		ok := rootCAs.AppendCertsFromPEM([]byte(config.CACertificate))
+	if a.CACertificate != "" {
+		ok := rootCAs.AppendCertsFromPEM([]byte(a.CACertificate))
 		if !ok {
 			err = errors.New("Failed to add scribd root cert to system CA bundle")
 			return client, err
@@ -66,9 +66,9 @@ func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 
 	apiConfig.HttpClient.Transport = &http.Transport{TLSClientConfig: clientConfig}
 
-	if config.Verbose {
+	if a.Verbose {
 		fmt.Printf("Vault Address: %s\n", apiConfig.Address)
-		if config.CACertificate != "" {
+		if a.CACertificate != "" {
 			fmt.Printf("Private CA Cert in use.\n")
 		}
 	}
@@ -86,7 +86,7 @@ func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 	}
 
 	// Attempt to use a token on the filesystem if it exists
-	ok, err := UseFSToken(client, config.Verbose)
+	ok, err := UseFSToken(client, a.Verbose)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to make use of filesystem token")
 		return client, err
@@ -97,14 +97,58 @@ func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 	}
 
 	// No token, or the token is expired.  Try the various auth methods in order of preference
-	for _, authMethod := range config.AuthMethods {
-		client, err := authMethod.Authenticator(config)
-		if err != nil {
-			if config.Verbose {
-				fmt.Printf("Auth method %s failed:%s\n", authMethod.Name, err)
+	for _, authMethod := range a.AuthMethods {
+		switch authMethod {
+		case "iam":
+			client, err = IAMLogin(a)
+			if err != nil {
+				if config.Verbose {
+					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
+				}
+
+				continue
 			}
 
-			continue
+			return client, err
+
+		case "k8s":
+			client, err = K8sLogin(a)
+			if err != nil {
+				if config.Verbose {
+					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
+				}
+
+				continue
+			}
+
+			return client, err
+
+		case "tls":
+			client, err = TLSLogin(a)
+			if err != nil {
+				if config.Verbose {
+					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
+				}
+
+				continue
+			}
+
+			return client, err
+
+		case "ldap":
+			client, err = LDAPLogin(a)
+			if err != nil {
+				if config.Verbose {
+					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
+				}
+
+				continue
+			}
+
+			return client, err
+
+		default:
+			err = errors.New(fmt.Sprintf("Unknown auth type %s", authMethod))
 		}
 
 		return client, err

@@ -15,31 +15,31 @@ import (
 const DEFAULT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 // K8sLogin Login to Vault from a K8s pod.
-func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
+func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	if _, err := os.Stat(DEFAULT_TOKEN_PATH); os.IsNotExist(err) {
 		err = errors.New("No JWT token found.  K8S login impossible.")
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "Attempting K8s Login...")
+	verboseOutput(authenticator.Verbose, "Attempting K8s Login...")
 
-	if config.Identifier == "" {
+	if authenticator.Identifier == "" {
 		err = errors.New("supplied cluster name is blank- cannot auth")
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  to cluster %q...", config.Identifier)
+	verboseOutput(authenticator.Verbose, "  to cluster %q...", authenticator.Identifier)
 
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
+		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
 		return client, err
 	}
 
-	if config.Address == "https://127.0.0.1:8200" {
-		if config.Address != "" {
-			apiConfig.Address = config.Address
+	if authenticator.Address == "https://127.0.0.1:8200" {
+		if authenticator.Address != "" {
+			apiConfig.Address = authenticator.Address
 		}
 	}
 
@@ -49,11 +49,11 @@ func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  successfully read k8s JWT token in pod")
+	verboseOutput(authenticator.Verbose, "  successfully read k8s JWT token in pod")
 
 	//curl -X POST -H "Content-type: application/json" https://vault-prod.inf.scribd.com:8200/v1/auth/k8s-bravo/login -d '{"role": "test-role", "jwt":”<jwt of principal>”}'
 	data := map[string]string{
-		"role": config.Role,
+		"role": authenticator.Role,
 		"jwt":  string(jwtBytes),
 	}
 
@@ -63,14 +63,14 @@ func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	vaultAddress := config.Address
+	vaultAddress := authenticator.Address
 	// protect potential double slashes
 	vaultAddress = strings.TrimRight(vaultAddress, "/")
 
-	vaultUrl := fmt.Sprintf("%s/v1/auth/k8s-%s/login", vaultAddress, config.Identifier)
+	vaultUrl := fmt.Sprintf("%s/v1/auth/k8s-%s/login", vaultAddress, authenticator.Identifier)
 
-	verboseOutput(config.Verbose, "  vault url is %s", vaultUrl)
-	verboseOutput(config.Verbose, "  making request...")
+	verboseOutput(authenticator.Verbose, "  vault url is %s", vaultUrl)
+	verboseOutput(authenticator.Verbose, "  making request...")
 
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
@@ -78,7 +78,7 @@ func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  Response code: %d", resp.StatusCode)
+	verboseOutput(authenticator.Verbose, "  Response code: %d", resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -113,7 +113,7 @@ func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  auth data successfully parsed")
+	verboseOutput(authenticator.Verbose, "  auth data successfully parsed")
 
 	token, ok := auth["client_token"].(string)
 	if !ok {
@@ -121,17 +121,17 @@ func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(config.Verbose, "  vault token extracted")
+	verboseOutput(authenticator.Verbose, "  vault token extracted")
 
 	client, err = api.NewClient(apiConfig)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to create vault client from config")
+		err = errors.Wrapf(err, "failed to create vault client from authenticator")
 		return client, err
 	}
 
 	client.SetToken(token)
 
-	verboseOutput(config.Verbose, "Success!\n")
+	verboseOutput(authenticator.Verbose, "Success!\n")
 
 	return client, err
 }
