@@ -9,8 +9,6 @@ import (
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
 func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
-	verboseOutput(authenticator.Verbose, "Attempting TLS Login...")
-
 	if authenticator.Role == "" {
 		err = errors.New("No role given.  Cannot auth.")
 		return client, err
@@ -25,6 +23,8 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		err = errors.New("Cannot perform TLS Auth without a client key")
 		return client, err
 	}
+
+	verboseOutput(authenticator.Verbose, "Attempting TLS Login with cert: %s and key %s...", authenticator.TlsClientCrtPath, authenticator.TlsClientKeyPath)
 
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
