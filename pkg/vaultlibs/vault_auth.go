@@ -24,9 +24,32 @@ type Authenticator struct {
 	Role          string
 }
 
-type AuthMethod struct {
-	Name         string
-	Authenticate func(authenticator *Authenticator) (client *api.Client, err error)
+func (a *Authenticator) SetAddress(address string) {
+	a.Address = address
+}
+
+func (a *Authenticator) SetCACertificate(certificate string) {
+	a.CACertificate = certificate
+}
+
+func (a *Authenticator) SetPrompt(prompt bool) {
+	a.Prompt = prompt
+}
+
+func (a *Authenticator) SetVerbose(verbose bool) {
+	a.Verbose = verbose
+}
+
+func (a *Authenticator) SetAuthMethods(methods []string) {
+	a.AuthMethods = methods
+}
+
+func (a *Authenticator) SetIdentifier(identifier string) {
+	a.Identifier = identifier
+}
+
+func (a *Authenticator) SetRole(role string) {
+	a.Role = role
 }
 
 // VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
