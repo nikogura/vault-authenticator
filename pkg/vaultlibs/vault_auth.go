@@ -53,7 +53,7 @@ func (a *Authenticator) SetRole(role string) {
 }
 
 // VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
-func (a *Authenticator) Auth(config *Authenticator) (client *api.Client, err error) {
+func (a *Authenticator) Auth() (client *api.Client, err error) {
 	// read the environment and use that over anything
 	apiConfig := api.DefaultConfig()
 
