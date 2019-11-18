@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
-	"log"
 	"strings"
 )
 
@@ -28,25 +27,27 @@ func LDAPLogin(authenticator *Authenticator) (client *api.Client, err error) {
 
 	client, err = api.NewClient(apiConfig)
 
+	var username string
+
 	if authenticator.Identifier == "" {
-		username, err := authenticator.UsernameFunc()
+		username, err = authenticator.UsernameFunc()
 		if err != nil {
 			err = errors.Wrap(err, "failed getting username")
 			return client, err
 		}
 
+		verboseOutput(authenticator.Verbose, "Username: %s", username)
+
 		if username == "" {
 			err = errors.New("No username.  Cannot authenticate")
 			return client, err
 		}
+	} else {
+		username = authenticator.Identifier
 	}
 
-	path := fmt.Sprintf("/auth/ldap/login/%s", authenticator.Identifier)
+	path := fmt.Sprintf("/auth/ldap/login/%s", username)
 	data := make(map[string]interface{})
-
-	if authenticator.Verbose {
-		log.Printf("Username: %s", authenticator.Identifier)
-	}
 
 	fmt.Println("")
 	fmt.Printf("Enter Your LDAP password\n")
