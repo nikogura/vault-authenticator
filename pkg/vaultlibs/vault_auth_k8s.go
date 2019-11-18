@@ -14,35 +14,32 @@ import (
 
 const DEFAULT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
-// DetectK8s  See if we can find a K8S token at the default location
-func DetectK8s(c chan bool, verbose bool) {
-	if _, err := os.Stat(DEFAULT_TOKEN_PATH); !os.IsNotExist(err) {
-		c <- true
-	}
-	c <- false
-}
-
 // K8sLogin Login to Vault from a K8s pod.
-func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client, err error) {
-	verboseOutput(verbose, "Attempting K8s Login...")
+func K8sLogin(config *VaultConfig) (client *api.Client, err error) {
+	if _, err := os.Stat(DEFAULT_TOKEN_PATH); os.IsNotExist(err) {
+		err = errors.New("No JWT token found.  K8S login impossible.")
+		return client, err
+	}
 
-	if cluster == "" {
+	verboseOutput(config.Verbose, "Attempting K8s Login...")
+
+	if config.Identifier == "" {
 		err = errors.New("supplied cluster name is blank- cannot auth")
 		return client, err
 	}
 
-	verboseOutput(verbose, "  to cluster %q...", cluster)
+	verboseOutput(config.Verbose, "  to cluster %q...", config.Identifier)
 
-	config := api.DefaultConfig()
-	err = config.ReadEnvironment()
+	apiConfig := api.DefaultConfig()
+	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client config")
 		return client, err
 	}
 
 	if config.Address == "https://127.0.0.1:8200" {
-		if VAULT_SITE_CONFIG.Address != "" {
-			config.Address = VAULT_SITE_CONFIG.Address
+		if config.Address != "" {
+			apiConfig.Address = config.Address
 		}
 	}
 
@@ -52,11 +49,11 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	verboseOutput(verbose, "  successfully read k8s JWT token in pod")
+	verboseOutput(config.Verbose, "  successfully read k8s JWT token in pod")
 
 	//curl -X POST -H "Content-type: application/json" https://vault-prod.inf.scribd.com:8200/v1/auth/k8s-bravo/login -d '{"role": "test-role", "jwt":”<jwt of principal>”}'
 	data := map[string]string{
-		"role": rolename,
+		"role": config.Role,
 		"jwt":  string(jwtBytes),
 	}
 
@@ -70,10 +67,10 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 	// protect potential double slashes
 	vaultAddress = strings.TrimRight(vaultAddress, "/")
 
-	vaultUrl := fmt.Sprintf("%s/v1/auth/k8s-%s/login", vaultAddress, cluster)
+	vaultUrl := fmt.Sprintf("%s/v1/auth/k8s-%s/login", vaultAddress, config.Identifier)
 
-	verboseOutput(verbose, "  vault url is %s", vaultUrl)
-	verboseOutput(verbose, "  making request...")
+	verboseOutput(config.Verbose, "  vault url is %s", vaultUrl)
+	verboseOutput(config.Verbose, "  making request...")
 
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
@@ -81,7 +78,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	verboseOutput(verbose, "  Response code: %d", resp.StatusCode)
+	verboseOutput(config.Verbose, "  Response code: %d", resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -116,7 +113,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	verboseOutput(verbose, "  auth data successfully parsed")
+	verboseOutput(config.Verbose, "  auth data successfully parsed")
 
 	token, ok := auth["client_token"].(string)
 	if !ok {
@@ -124,9 +121,9 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 		return client, err
 	}
 
-	verboseOutput(verbose, "  vault token extracted")
+	verboseOutput(config.Verbose, "  vault token extracted")
 
-	client, err = api.NewClient(config)
+	client, err = api.NewClient(apiConfig)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create vault client from config")
 		return client, err
@@ -134,7 +131,7 @@ func K8sLogin(cluster string, rolename string, verbose bool) (client *api.Client
 
 	client.SetToken(token)
 
-	verboseOutput(verbose, "Success!\n")
+	verboseOutput(config.Verbose, "Success!\n")
 
 	return client, err
 }

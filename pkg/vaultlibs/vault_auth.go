@@ -5,56 +5,58 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hashicorp/vault/api"
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
-	"os/user"
-	"strings"
 )
 
 const VAULT_TOKEN_ENV_VAR = "VAULT_TOKEN"
 const VAULT_AUTH_FAIL = "vault login fail.  It didn't blow up, but also didn't return a token, either."
 
-// VaultSiteConfig A struct for setting fundamental information about how your org connects to Vault without needing to set ENV vars everywhere.  ENV Vars will still trump this value, but in their absence, this is a sane default for your org.
-type VaultSiteConfig struct {
+// VaultConfig A struct for setting fundamental information about how your org connects to Vault without needing to set ENV vars everywhere.  ENV Vars will still trump this value, but in their absence, this is a sane default for your org.
+type VaultConfig struct {
 	Address       string
 	CACertificate string
+	Prompt        bool
+	Verbose       bool
+	AuthMethods   []*AuthMethod
+	Identifier    string
+	Role          string
 }
 
-var VAULT_SITE_CONFIG VaultSiteConfig
+type AuthMethod struct {
+	Name          string
+	Authenticator func(config *VaultConfig) (client *api.Client, err error)
+}
 
-// VaultConfig creates a new config for vault, sets VAULT_ADDR if it's not already set, and adds the scribd root CA cert to the trust store.
-func VaultConfig() (config *api.Config, err error) {
+// VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
+func VaultAuth(config *VaultConfig) (client *api.Client, err error) {
 	// read the environment and use that over anything
-	config = api.DefaultConfig()
+	apiConfig := api.DefaultConfig()
 
-	err = config.ReadEnvironment()
+	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client config")
-		return config, err
+		return client, err
 	}
 
-	if config.Address == "https://127.0.0.1:8200" {
-		if VAULT_SITE_CONFIG.Address != "" {
-			config.Address = VAULT_SITE_CONFIG.Address
+	if apiConfig.Address == "https://127.0.0.1:8200" {
+		if config.Address != "" {
+			apiConfig.Address = config.Address
 		}
 	}
 
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get system cert pool")
-		return config, err
+		return client, err
 	}
 
-	if VAULT_SITE_CONFIG.CACertificate != "" {
-		ok := rootCAs.AppendCertsFromPEM([]byte(VAULT_SITE_CONFIG.CACertificate))
+	if config.CACertificate != "" {
+		ok := rootCAs.AppendCertsFromPEM([]byte(config.CACertificate))
 		if !ok {
 			err = errors.New("Failed to add scribd root cert to system CA bundle")
-			return config, err
+			return client, err
 		}
 	}
 
@@ -62,23 +64,16 @@ func VaultConfig() (config *api.Config, err error) {
 		RootCAs: rootCAs,
 	}
 
-	config.HttpClient.Transport = &http.Transport{TLSClientConfig: clientConfig}
+	apiConfig.HttpClient.Transport = &http.Transport{TLSClientConfig: clientConfig}
 
-	return config, err
-}
-
-// VaultAuth Authenticates to Vault by a number of methods.  K8s is preferred, but if that fails, it tries AWS, TLS, and finally LDAP
-func VaultAuth(rolename string, k8sCluster string, prompt bool, verbose bool) (client *api.Client, err error) {
-	config, err := VaultConfig()
-
-	if verbose {
-		fmt.Printf("Vault Address: %s\n", config.Address)
-		if VAULT_SITE_CONFIG.CACertificate != "" {
+	if config.Verbose {
+		fmt.Printf("Vault Address: %s\n", apiConfig.Address)
+		if config.CACertificate != "" {
 			fmt.Printf("Private CA Cert in use.\n")
 		}
 	}
 
-	client, err = api.NewClient(config)
+	client, err = api.NewClient(apiConfig)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create vault api client")
 		return client, err
@@ -91,7 +86,7 @@ func VaultAuth(rolename string, k8sCluster string, prompt bool, verbose bool) (c
 	}
 
 	// Attempt to use a token on the filesystem if it exists
-	ok, err := UseFSToken(client, verbose)
+	ok, err := UseFSToken(client, config.Verbose)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to make use of filesystem token")
 		return client, err
@@ -101,115 +96,33 @@ func VaultAuth(rolename string, k8sCluster string, prompt bool, verbose bool) (c
 		return client, err
 	}
 
-	k8s := make(chan bool)
-	aws := make(chan bool)
-	tls := make(chan bool)
+	// No token, or the token is expired.  Try the various auth methods in order of preference
+	for _, authMethod := range config.AuthMethods {
+		client, err := authMethod.Authenticator(config)
+		if err != nil {
+			if config.Verbose {
+				fmt.Printf("Auth method %s failed:%s\n", authMethod.Name, err)
+			}
 
-	go DetectK8s(k8s, verbose)
-	go DetectAws(aws, verbose)
-	go DetectTls(tls, verbose)
-
-	isK8s := <-k8s
-	isAws := <-aws
-	isTls := <-tls
-
-	if isAws {
-		return IAMLogin(rolename, verbose)
-	} else if isK8s {
-		return K8sLogin(k8sCluster, rolename, verbose)
-	} else if isTls {
-		return TLSLogin(rolename, verbose)
-	}
-
-	if prompt {
-		// LDAP Login
-		if verbose {
-			log.Printf("Attempting User login via LDAP...\n\n")
+			continue
 		}
-		return UserLogin(verbose)
+
+		return client, err
 	}
+
+	err = errors.New("All auth methods have failed.\n")
 
 	return client, err
 }
 
-// UserLogin logs the user into vault via LDAP and obtains a token.  (Really only intended for user usage)
-func UserLogin(verbose bool) (client *api.Client, err error) {
-	config, err := VaultConfig()
-	client, err = api.NewClient(config)
-
-	userConfig, err := LoadUserConfig()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to load user config")
-		return client, err
-	}
-
-	var username string
-
-	if userConfig.Username != "" {
-		username = userConfig.Username
-	} else {
-		userObj, err := user.Current()
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get current user")
-			return client, err
-		}
-
-		username = userObj.Username
-	}
-
-	path := fmt.Sprintf("/auth/ldap/login/%s", username)
-	data := make(map[string]interface{})
-
+func verboseOutput(verbose bool, message string, args ...interface{}) {
 	if verbose {
-		log.Printf("Username: %s", username)
-	}
-
-	fmt.Println("")
-	fmt.Printf("Enter Your LDAP password\n")
-
-	passwordBytes, err := terminal.ReadPassword(0)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to read password from terminal")
-		return client, err
-	}
-
-	passwordString := string(passwordBytes)
-	passwordString = strings.TrimSuffix(passwordString, "\n")
-
-	data["password"] = passwordString
-
-	resp, err := client.Logical().Write(path, data)
-	if err != nil {
-		err = errors.Wrapf(err, "failed submitting auth data to vault")
-		return client, err
-	}
-
-	if resp != nil {
-		auth := resp.Auth
-		token := auth.ClientToken
-
-		if token != "" {
-			client.SetToken(token)
-			homeDir, err := homedir.Dir()
-			if err != nil {
-				err = errors.Wrapf(err, "failed to derive user home dir")
-				return client, err
-			}
-
-			tokenFile := fmt.Sprintf("%s/%s", homeDir, DEFAULT_VAULT_TOKEN_FILE)
-
-			// write the token to the filesystem where expected for future use
-			err = ioutil.WriteFile(tokenFile, []byte(token), 0644)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to write token file: %s", tokenFile)
-				return client, err
-			}
-
-			return client, err
+		if len(args) == 0 {
+			fmt.Printf("%s\n", message)
+			return
 		}
+
+		msg := fmt.Sprintf(message, args...)
+		fmt.Printf("%s\n", msg)
 	}
-
-	err = errors.New(VAULT_AUTH_FAIL)
-
-	return client, err
 }

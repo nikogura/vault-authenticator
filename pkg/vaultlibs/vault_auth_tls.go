@@ -25,24 +25,24 @@ func DetectTls(c chan bool, verbose bool) {
 }
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
-func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
-	verboseOutput(verbose, "Attempting TLS Login...")
+func TLSLogin(config *VaultConfig) (client *api.Client, err error) {
+	verboseOutput(config.Verbose, "Attempting TLS Login...")
 
-	if rolename == "" {
-		verboseOutput(verbose, "  No rolename given.  Attempting Legacy TLS Auth\n")
-		return LegacyCertAuth()
+	if config.Role == "" {
+		err = errors.New("No role given.  Cannot auth.")
+		return client, err
 	}
 
-	config := api.DefaultConfig()
-	err = config.ReadEnvironment()
+	apiConfig := api.DefaultConfig()
+	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client config")
 		return client, err
 	}
 
-	if config.Address == "https://127.0.0.1:8200" {
-		if VAULT_SITE_CONFIG.Address != "" {
-			config.Address = VAULT_SITE_CONFIG.Address
+	if apiConfig.Address == "https://127.0.0.1:8200" {
+		if config.Address != "" {
+			apiConfig.Address = config.Address
 		}
 	}
 
@@ -55,16 +55,16 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 				Insecure:   false,
 			}
 
-			config.ConfigureTLS(&tlsConfig)
+			apiConfig.ConfigureTLS(&tlsConfig)
 
-			client, err = api.NewClient(config)
+			client, err = api.NewClient(apiConfig)
 
 			loginData := make(map[string]interface{})
-			loginData["name"] = rolename
+			loginData["name"] = config.Role
 
 			path := "auth/cert/login"
-			verboseOutput(verbose, "  login path is %s/%s", config.Address, path)
-			verboseOutput(verbose, "  login role is %s", rolename)
+			verboseOutput(config.Verbose, "  login path is %s/%s", apiConfig.Address, path)
+			verboseOutput(config.Verbose, "  login role is %s", config.Role)
 
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
@@ -86,7 +86,7 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 
 			client.SetToken(token)
 
-			verboseOutput(verbose, "Success!\n")
+			verboseOutput(config.Verbose, "Success!\n")
 			return client, err
 
 		} else {
@@ -96,58 +96,6 @@ func TLSLogin(rolename string, verbose bool) (client *api.Client, err error) {
 	} else {
 		err = errors.New(fmt.Sprintf("certificate %s does not exist", TLS_CLIENT_CERT_PATH))
 		return client, err
-	}
-	return client, err
-}
-
-// LegacyCertAuth logs a host into Vault via it's certificate in the manner expected by SecretsV1
-func LegacyCertAuth() (client *api.Client, err error) {
-	config := api.DefaultConfig()
-	err = config.ReadEnvironment()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
-		return client, err
-	}
-
-	if config.Address == "https://127.0.0.1:8200" {
-		if VAULT_SITE_CONFIG.Address != "" {
-			config.Address = VAULT_SITE_CONFIG.Address
-		}
-	}
-
-	if _, err := os.Stat(TLS_CLIENT_CERT_PATH); !os.IsNotExist(err) {
-		if _, err := os.Stat(TLS_CLIENT_KEY_PATH); !os.IsNotExist(err) {
-			// We'll try to do cert auth using the host's vault key
-			tlsConfig := api.TLSConfig{
-				ClientCert: TLS_CLIENT_CERT_PATH,
-				ClientKey:  TLS_CLIENT_KEY_PATH,
-				Insecure:   false,
-			}
-			config.ConfigureTLS(&tlsConfig)
-
-			client, err = api.NewClient(config)
-
-			loginData := make(map[string]interface{})
-			loginRole := os.Getenv("VAULT_LOGIN_ROLE")
-
-			// if env var for vault login role is present, use it
-			if loginRole != "" {
-				loginData["name"] = loginRole
-			} else if os.Getenv("CI") != "" { // else look for the env var 'CI', set by gitlab
-				loginData["name"] = "ci"
-			}
-
-			loginSecret, err := client.Logical().Write("auth/cert/login", loginData)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to perform cert login to vault")
-				return client, err
-			}
-
-			token := loginSecret.Auth.ClientToken
-			client.SetToken(token)
-
-			return client, err
-		}
 	}
 	return client, err
 }
