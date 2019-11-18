@@ -16,14 +16,16 @@ const VAULT_AUTH_FAIL = "vault login fail.  It didn't blow up, but also didn't r
 
 // Authenticator What handles the authentication to Vault- by whatever supported methods you configure.  Authenticator will try them in order and return the first one that is successful.
 type Authenticator struct {
-	Address       string
-	CACertificate string
-	Prompt        bool
-	Verbose       bool
-	AuthMethods   []string
-	Identifier    string
-	Role          string
-	UsernameFunc  func() (username string, err error)
+	Address          string
+	CACertificate    string
+	Prompt           bool
+	Verbose          bool
+	AuthMethods      []string
+	Identifier       string
+	Role             string
+	UsernameFunc     func() (username string, err error)
+	TlsClientKeyPath string
+	TlsClientCrtPath string
 }
 
 func (a *Authenticator) SetAddress(address string) {
@@ -56,6 +58,14 @@ func (a *Authenticator) SetRole(role string) {
 
 func (a *Authenticator) SetUsernameFunc(function func() (username string, err error)) {
 	a.UsernameFunc = function
+}
+
+func (a *Authenticator) SetTlsClientKeyPath(path string) {
+	a.TlsClientKeyPath = path
+}
+
+func (a *Authenticator) SetTlsClientCrtPath(path string) {
+	a.TlsClientKeyPath = path
 }
 
 // NewAuthenticator creates a new Authenticator object

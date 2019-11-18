@@ -7,23 +7,6 @@ import (
 	"os"
 )
 
-const TLS_CLIENT_CERT_PATH = "/etc/vault/host.crt"
-const TLS_CLIENT_KEY_PATH = "/etc/vault/host.key"
-
-// DetectTls See if we have a certificate and private key in the normal location for a SL host.
-func DetectTls(c chan bool, verbose bool) {
-	// check to see if the key and cert exist
-	if _, err := os.Stat(TLS_CLIENT_KEY_PATH); os.IsNotExist(err) {
-		c <- false
-	} else {
-		if _, err := os.Stat(TLS_CLIENT_CERT_PATH); os.IsNotExist(err) {
-			c <- false
-		} else {
-			c <- true
-		}
-	}
-}
-
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
 func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	verboseOutput(authenticator.Verbose, "Attempting TLS Login...")
@@ -46,12 +29,12 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		}
 	}
 
-	if _, err := os.Stat(TLS_CLIENT_CERT_PATH); !os.IsNotExist(err) {
-		if _, err := os.Stat(TLS_CLIENT_KEY_PATH); !os.IsNotExist(err) {
+	if _, err := os.Stat(authenticator.TlsClientCrtPath); !os.IsNotExist(err) {
+		if _, err := os.Stat(authenticator.TlsClientKeyPath); !os.IsNotExist(err) {
 			// We'll try to do cert auth using the host's vault key
 			tlsConfig := api.TLSConfig{
-				ClientCert: TLS_CLIENT_CERT_PATH,
-				ClientKey:  TLS_CLIENT_KEY_PATH,
+				ClientCert: authenticator.TlsClientCrtPath,
+				ClientKey:  authenticator.TlsClientKeyPath,
 				Insecure:   false,
 			}
 
@@ -90,11 +73,11 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			return client, err
 
 		} else {
-			err = errors.New(fmt.Sprintf("private key %s does not exist", TLS_CLIENT_KEY_PATH))
+			err = errors.New(fmt.Sprintf("private key %s does not exist", authenticator.TlsClientKeyPath))
 			return client, err
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("certificate %s does not exist", TLS_CLIENT_CERT_PATH))
+		err = errors.New(fmt.Sprintf("certificate %s does not exist", authenticator.TlsClientCrtPath))
 		return client, err
 	}
 	return client, err
