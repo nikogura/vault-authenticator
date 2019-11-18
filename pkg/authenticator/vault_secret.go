@@ -1,4 +1,4 @@
-package vaultlibs
+package authenticator
 
 import (
 	"encoding/base64"

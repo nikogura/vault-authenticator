@@ -1,4 +1,4 @@
-module github.com/scribd/vaultlibs
+module github.com/scribd/vault-authenticator
 
 go 1.13
 

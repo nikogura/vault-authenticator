@@ -1,4 +1,4 @@
-package vaultlibs
+package authenticator
 
 import (
 	"fmt"
@@ -73,11 +73,11 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			return client, err
 
 		} else {
-			err = errors.New(fmt.Sprintf("private key %s does not exist", authenticator.TlsClientKeyPath))
+			err = errors.New(fmt.Sprintf("private key %q does not exist", authenticator.TlsClientKeyPath))
 			return client, err
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("certificate %s does not exist", authenticator.TlsClientCrtPath))
+		err = errors.New(fmt.Sprintf("certificate %q does not exist", authenticator.TlsClientCrtPath))
 		return client, err
 	}
 	return client, err
