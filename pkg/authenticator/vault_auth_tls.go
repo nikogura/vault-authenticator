@@ -16,6 +16,16 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		return client, err
 	}
 
+	if authenticator.TlsClientCrtPath == "" {
+		err = errors.New("Cannot perform TLS Auth without a client certificate")
+		return client, err
+	}
+
+	if authenticator.TlsClientKeyPath == "" {
+		err = errors.New("Cannot perform TLS Auth without a client key")
+		return client, err
+	}
+
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
