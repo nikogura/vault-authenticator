@@ -158,7 +158,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 	for _, authMethod := range a.AuthMethods {
 		switch authMethod {
 		case "iam":
-			client, err = IAMLogin(a)
+			err = IAMLogin(a, client)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -170,7 +170,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "k8s":
-			client, err = K8sLogin(a)
+			err = K8sLogin(a, client)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -182,7 +182,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "tls":
-			client, err = TLSLogin(a)
+			err = TLSLogin(a, client)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -194,7 +194,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "ldap":
-			client, err = LDAPLogin(a)
+			err = LDAPLogin(a, client)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)

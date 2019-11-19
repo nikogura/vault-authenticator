@@ -8,20 +8,20 @@ import (
 )
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
-func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
+func TLSLogin(authenticator *Authenticator, client *api.Client) (err error) {
 	if authenticator.Role == "" {
 		err = errors.New("No role given.  Cannot auth.")
-		return client, err
+		return err
 	}
 
 	if authenticator.TlsClientCrtPath == "" {
 		err = errors.New("Cannot perform TLS Auth without a client certificate")
-		return client, err
+		return err
 	}
 
 	if authenticator.TlsClientKeyPath == "" {
 		err = errors.New("Cannot perform TLS Auth without a client key")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "Attempting TLS Login with cert: %s and key: %s ...", authenticator.TlsClientCrtPath, authenticator.TlsClientKeyPath)
@@ -30,7 +30,7 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
-		return client, err
+		return err
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
@@ -62,33 +62,33 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to perform cert login to vault")
-				return client, err
+				return err
 			}
 
 			if loginSecret == nil {
 				err = errors.New(fmt.Sprintf("no auth data returned on login"))
-				return client, err
+				return err
 			}
 
 			token := loginSecret.Auth.ClientToken
 
 			if token == "" {
 				err = errors.New("empty token")
-				return client, err
+				return err
 			}
 
 			client.SetToken(token)
 
 			verboseOutput(authenticator.Verbose, "Success!\n")
-			return client, err
+			return err
 
 		} else {
 			err = errors.New(fmt.Sprintf("private key %q does not exist", authenticator.TlsClientKeyPath))
-			return client, err
+			return err
 		}
 	} else {
 		err = errors.New(fmt.Sprintf("certificate %q does not exist", authenticator.TlsClientCrtPath))
-		return client, err
+		return err
 	}
-	return client, err
+	return err
 }

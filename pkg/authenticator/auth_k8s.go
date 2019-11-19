@@ -15,17 +15,17 @@ import (
 const DEFAULT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 // K8sLogin Login to Vault from a K8s pod.
-func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
+func K8sLogin(authenticator *Authenticator, client *api.Client) (err error) {
 	if _, err := os.Stat(DEFAULT_TOKEN_PATH); os.IsNotExist(err) {
 		err = errors.New("No JWT token found.  K8S login impossible.")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "Attempting K8s Login...")
 
 	if authenticator.Identifier == "" {
 		err = errors.New("supplied cluster name is blank- cannot auth")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  to cluster %q...", authenticator.Identifier)
@@ -34,7 +34,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
-		return client, err
+		return err
 	}
 
 	if authenticator.Address == "https://127.0.0.1:8200" {
@@ -46,7 +46,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	jwtBytes, err := ioutil.ReadFile(DEFAULT_TOKEN_PATH)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read token from %s", DEFAULT_TOKEN_PATH)
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  successfully read k8s JWT token in pod")
@@ -60,7 +60,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	postdata, err := json.Marshal(data)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to marshal data in auth request")
-		return client, err
+		return err
 	}
 
 	vaultAddress := authenticator.Address
@@ -75,7 +75,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
 		err = errors.Wrapf(err, "failed to post auth data to vault")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  Response code: %d", resp.StatusCode)
@@ -85,7 +85,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read auth response body")
-		return client, err
+		return err
 	}
 
 	var authData map[string]interface{}
@@ -93,24 +93,24 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	err = json.Unmarshal(body, &authData)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to unmarshal data in response body")
-		return client, err
+		return err
 	}
 
 	authError, ok := authData["errors"].([]interface{})
 	if ok {
 		if len(authError) > 0 {
 			err = errors.New(fmt.Sprintf("error authenticating to vault: %s", authError[0]))
-			return client, err
+			return err
 		}
 
 		err = errors.New("unknown err authenticating to vault")
-		return client, err
+		return err
 	}
 
 	auth, ok := authData["auth"].(map[string]interface{})
 	if !ok {
 		err = errors.New("failed to get auth data from response")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  auth data successfully parsed")
@@ -118,7 +118,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	token, ok := auth["client_token"].(string)
 	if !ok {
 		err = errors.New("returned client token is not a string")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  vault token extracted")
@@ -126,14 +126,14 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	client, err = api.NewClient(apiConfig)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create vault client from authenticator")
-		return client, err
+		return err
 	}
 
 	client.SetToken(token)
 
 	verboseOutput(authenticator.Verbose, "Success!\n")
 
-	return client, err
+	return err
 }
 
 /*

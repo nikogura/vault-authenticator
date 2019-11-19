@@ -20,7 +20,7 @@ import (
 const CLIENT_TIMEOUT = 500 * time.Millisecond
 
 // IAMLogin actually performs the AWS IAM login to vault, and returns a logged in vault client
-func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
+func IAMLogin(authenticator *Authenticator, client *api.Client) (err error) {
 	verboseOutput(authenticator.Verbose, "Attempting IAM Login...\n")
 
 	if os.Getenv("AWS_REGION") == "" {
@@ -31,14 +31,14 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 
 	if os.Getenv("AWS_REGION") == "" {
 		err = errors.New("Not running in AWS")
-		return client, err
+		return err
 	}
 
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
-		return client, err
+		return err
 	}
 
 	if apiConfig.Address == "https://127.0.0.1:8200" {
@@ -53,19 +53,19 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	err = req.Sign()
 	if err != nil {
 		err = errors.Wrap(err, "failed to sign auth request")
-		return client, err
+		return err
 	}
 
 	rHeader, err := json.Marshal(req.HTTPRequest.Header)
 	if err != nil {
 		err = errors.Wrap(err, "failed to marshal request headers for auth request")
-		return client, err
+		return err
 	}
 
 	rBody, err := ioutil.ReadAll(req.HTTPRequest.Body)
 	if err != nil {
 		err = errors.Wrap(err, "failed to read auth request body")
-		return client, err
+		return err
 	}
 
 	data := map[string]string{
@@ -79,7 +79,7 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	postdata, err := json.Marshal(data)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to marshal data in auth request")
-		return client, err
+		return err
 	}
 
 	vaultAddress := apiConfig.Address
@@ -94,7 +94,7 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	resp, err := http.Post(vaultUrl, "application/json", bytes.NewBuffer(postdata))
 	if err != nil {
 		err = errors.Wrapf(err, "failed to post auth data to vault")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  Response code: %d", resp.StatusCode)
@@ -104,7 +104,7 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read auth response body")
-		return client, err
+		return err
 	}
 
 	var authData map[string]interface{}
@@ -112,24 +112,24 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	err = json.Unmarshal(body, &authData)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to unmarshal data in response body")
-		return client, err
+		return err
 	}
 
 	authError, ok := authData["errors"].([]interface{})
 	if ok {
 		if len(authError) > 0 {
 			err = errors.New(fmt.Sprintf("error authenticating to vault: %s", authError[0]))
-			return client, err
+			return err
 		}
 
 		err = errors.New("unknown err authenticating to vault")
-		return client, err
+		return err
 	}
 
 	auth, ok := authData["auth"].(map[string]interface{})
 	if !ok {
 		err = errors.New("failed to get auth data from response")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  auth data successfully parsed")
@@ -137,7 +137,7 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	token, ok := auth["client_token"].(string)
 	if !ok {
 		err = errors.New("returned client token is not a string")
-		return client, err
+		return err
 	}
 
 	verboseOutput(authenticator.Verbose, "  vault token extracted")
@@ -145,14 +145,14 @@ func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	client, err = api.NewClient(apiConfig)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create vault client from authenticator")
-		return client, err
+		return err
 	}
 
 	client.SetToken(token)
 
 	verboseOutput(authenticator.Verbose, "Success!\n\n")
 
-	return client, err
+	return err
 }
 
 // DetectAWS See if we can find the AWS metadata service necessary for IAM auth
