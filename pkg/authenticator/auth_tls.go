@@ -24,7 +24,7 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(authenticator.Verbose, "Attempting TLS Login with cert: %s and key %s...", authenticator.TlsClientCrtPath, authenticator.TlsClientKeyPath)
+	verboseOutput(authenticator.Verbose, "Attempting TLS Login with cert: %s and key: %s ...", authenticator.TlsClientCrtPath, authenticator.TlsClientKeyPath)
 
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
@@ -57,7 +57,7 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			path := "auth/cert/login"
 			verboseOutput(authenticator.Verbose, "  login path is %s/%s", apiConfig.Address, path)
 			verboseOutput(authenticator.Verbose, "  login role is %s", authenticator.Role)
-			verboseOutput(authenticator.Verbose, "  login Data: %s\n", loginData)
+			verboseOutput(authenticator.Verbose, "  login data: %s\n", loginData)
 
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
