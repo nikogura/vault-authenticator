@@ -30,11 +30,6 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 
 	verboseOutput(authenticator.Verbose, "  to cluster %q...", authenticator.Identifier)
 
-	apiConfig, err := ApiConfig(authenticator.Address, authenticator.CACertificate)
-	if err != nil {
-		err = errors.Wrap(err, "failed creating vault api config")
-	}
-
 	jwtBytes, err := ioutil.ReadFile(DEFAULT_TOKEN_PATH)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read token from %s", DEFAULT_TOKEN_PATH)
@@ -113,11 +108,16 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(authenticator.Verbose, "  vault token extracted")
+	verboseOutput(authenticator.Verbose, "  vault token extracted: %s", token)
+
+	apiConfig, err := ApiConfig(authenticator.Address, authenticator.CACertificate)
+	if err != nil {
+		err = errors.Wrap(err, "failed creating vault api config")
+	}
 
 	client, err = api.NewClient(apiConfig)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to create vault client from authenticator")
+		err = errors.Wrapf(err, "failed to create vault client")
 		return client, err
 	}
 
