@@ -89,40 +89,7 @@ func NewAuthenticator() (authenticator *Authenticator) {
 
 // VaultAuth Authenticates to Vault by a number of methods.  AWS IAM is preferred, but if that fails, it tries K8s, TLS, and finally LDAP
 func (a *Authenticator) Auth() (client *api.Client, err error) {
-	// read the environment and use that over anything
-	apiConfig := api.DefaultConfig()
-
-	err = apiConfig.ReadEnvironment()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client config")
-		return client, err
-	}
-
-	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if a.Address != "" {
-			apiConfig.Address = a.Address
-		}
-	}
-
-	rootCAs, err := x509.SystemCertPool()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get system cert pool")
-		return client, err
-	}
-
-	if a.CACertificate != "" {
-		ok := rootCAs.AppendCertsFromPEM([]byte(a.CACertificate))
-		if !ok {
-			err = errors.New("Failed to add scribd root cert to system CA bundle")
-			return client, err
-		}
-	}
-
-	clientConfig := &tls2.Config{
-		RootCAs: rootCAs,
-	}
-
-	apiConfig.HttpClient.Transport = &http.Transport{TLSClientConfig: clientConfig}
+	apiConfig, err := ApiConfig(a.Address, a.CACertificate)
 
 	if a.Verbose {
 		fmt.Printf("Vault Address: %s\n", apiConfig.Address)
@@ -158,7 +125,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 	for _, authMethod := range a.AuthMethods {
 		switch authMethod {
 		case "iam":
-			err = IAMLogin(a, client)
+			client, err = IAMLogin(a)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -170,7 +137,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "k8s":
-			err = K8sLogin(a, client)
+			client, err = K8sLogin(a)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -182,7 +149,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "tls":
-			err = TLSLogin(a, client)
+			client, err = TLSLogin(a)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -194,7 +161,7 @@ func (a *Authenticator) Auth() (client *api.Client, err error) {
 			return client, err
 
 		case "ldap":
-			err = LDAPLogin(a, client)
+			client, err = LDAPLogin(a)
 			if err != nil {
 				if a.Verbose {
 					fmt.Printf("Auth method %s failed:%s\n", authMethod, err)
@@ -227,4 +194,44 @@ func verboseOutput(verbose bool, message string, args ...interface{}) {
 		msg := fmt.Sprintf(message, args...)
 		fmt.Printf("%s\n", msg)
 	}
+}
+
+// ApiConfig creates a vault api config in a standard fashion
+func ApiConfig(address string, cacert string) (config *api.Config, err error) {
+	// read the environment and use that over anything
+	config = api.DefaultConfig()
+
+	err = config.ReadEnvironment()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to inject environment into client config")
+		return config, err
+	}
+
+	if config.Address == "https://127.0.0.1:8200" {
+		if address != "" {
+			config.Address = address
+		}
+	}
+
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get system cert pool")
+		return config, err
+	}
+
+	if cacert != "" {
+		ok := rootCAs.AppendCertsFromPEM([]byte(cacert))
+		if !ok {
+			err = errors.New("Failed to add scribd root cert to system CA bundle")
+			return config, err
+		}
+	}
+
+	clientConfig := &tls2.Config{
+		RootCAs: rootCAs,
+	}
+
+	config.HttpClient.Transport = &http.Transport{TLSClientConfig: clientConfig}
+
+	return config, err
 }

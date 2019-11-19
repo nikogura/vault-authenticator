@@ -11,22 +11,15 @@ import (
 )
 
 // LDAPLogin logs the user into vault via LDAP and obtains a token.  (Really only intended for user usage)
-func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
+func LDAPLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	if !authenticator.Prompt {
 		err = errors.New("Interactive prompts disabled.  LDAP Auth cannot proceed.")
-		return err
-	}
-	apiConfig := api.DefaultConfig()
-	err = apiConfig.ReadEnvironment()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
-		return err
+		return client, err
 	}
 
-	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if authenticator.Address != "" {
-			apiConfig.Address = authenticator.Address
-		}
+	apiConfig, err := ApiConfig(authenticator.Address, authenticator.CACertificate)
+	if err != nil {
+		err = errors.Wrap(err, "failed creating vault api config")
 	}
 
 	client, err = api.NewClient(apiConfig)
@@ -37,14 +30,14 @@ func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
 		username, err = authenticator.UsernameFunc()
 		if err != nil {
 			err = errors.Wrap(err, "failed getting username")
-			return err
+			return client, err
 		}
 
 		verboseOutput(authenticator.Verbose, "Username: %s", username)
 
 		if username == "" {
 			err = errors.New("No username.  Cannot authenticate")
-			return err
+			return client, err
 		}
 	} else {
 		username = authenticator.Identifier
@@ -59,7 +52,7 @@ func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
 	passwordBytes, err := terminal.ReadPassword(0)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read password from terminal")
-		return err
+		return client, err
 	}
 
 	passwordString := string(passwordBytes)
@@ -70,7 +63,7 @@ func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
 	resp, err := client.Logical().Write(path, data)
 	if err != nil {
 		err = errors.Wrapf(err, "failed submitting auth data to vault")
-		return err
+		return client, err
 	}
 
 	if resp != nil {
@@ -82,7 +75,7 @@ func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
 			homeDir, err := homedir.Dir()
 			if err != nil {
 				err = errors.Wrapf(err, "failed to derive user home dir")
-				return err
+				return client, err
 			}
 
 			tokenFile := fmt.Sprintf("%s/%s", homeDir, DEFAULT_VAULT_TOKEN_FILE)
@@ -91,14 +84,14 @@ func LDAPLogin(authenticator *Authenticator, client *api.Client) (err error) {
 			err = ioutil.WriteFile(tokenFile, []byte(token), 0644)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to write token file: %s", tokenFile)
-				return err
+				return client, err
 			}
 
-			return err
+			return client, err
 		}
 	}
 
 	err = errors.New(VAULT_AUTH_FAIL)
 
-	return err
+	return client, err
 }

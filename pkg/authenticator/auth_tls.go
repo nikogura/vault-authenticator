@@ -8,35 +8,27 @@ import (
 )
 
 // TLSLogin logs a host into Vault via it's certificates.  Intended for hosts, not users
-func TLSLogin(authenticator *Authenticator, client *api.Client) (err error) {
+func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 	if authenticator.Role == "" {
 		err = errors.New("No role given.  Cannot auth.")
-		return err
+		return client, err
 	}
 
 	if authenticator.TlsClientCrtPath == "" {
 		err = errors.New("Cannot perform TLS Auth without a client certificate")
-		return err
+		return client, err
 	}
 
 	if authenticator.TlsClientKeyPath == "" {
 		err = errors.New("Cannot perform TLS Auth without a client key")
-		return err
+		return client, err
 	}
 
 	verboseOutput(authenticator.Verbose, "Attempting TLS Login with cert: %s and key: %s ...", authenticator.TlsClientCrtPath, authenticator.TlsClientKeyPath)
 
-	apiConfig := api.DefaultConfig()
-	err = apiConfig.ReadEnvironment()
+	apiConfig, err := ApiConfig(authenticator.Address, authenticator.CACertificate)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to inject environment into client authenticator")
-		return err
-	}
-
-	if apiConfig.Address == "https://127.0.0.1:8200" {
-		if authenticator.Address != "" {
-			apiConfig.Address = authenticator.Address
-		}
+		err = errors.Wrap(err, "failed creating vault api config")
 	}
 
 	if _, err := os.Stat(authenticator.TlsClientCrtPath); !os.IsNotExist(err) {
@@ -62,33 +54,33 @@ func TLSLogin(authenticator *Authenticator, client *api.Client) (err error) {
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to perform cert login to vault")
-				return err
+				return client, err
 			}
 
 			if loginSecret == nil {
 				err = errors.New(fmt.Sprintf("no auth data returned on login"))
-				return err
+				return client, err
 			}
 
 			token := loginSecret.Auth.ClientToken
 
 			if token == "" {
 				err = errors.New("empty token")
-				return err
+				return client, err
 			}
 
 			client.SetToken(token)
 
 			verboseOutput(authenticator.Verbose, "Success!\n")
-			return err
+			return client, err
 
 		} else {
 			err = errors.New(fmt.Sprintf("private key %q does not exist", authenticator.TlsClientKeyPath))
-			return err
+			return client, err
 		}
 	} else {
 		err = errors.New(fmt.Sprintf("certificate %q does not exist", authenticator.TlsClientCrtPath))
-		return err
+		return client, err
 	}
-	return err
+	return client, err
 }
