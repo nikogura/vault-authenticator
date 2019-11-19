@@ -108,7 +108,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 		return client, err
 	}
 
-	verboseOutput(authenticator.Verbose, "  vault token extracted: %s", token)
+	verboseOutput(authenticator.Verbose, "  vault token extracted")
 
 	apiConfig, err := ApiConfig(authenticator.Address, authenticator.CACertificate)
 	if err != nil {
