@@ -17,7 +17,7 @@ import (
 )
 
 // Time out for all AWS Metadata endpoint reads.  Half a second seems to work.  Unknown if there's an expected latency, or how close this falls to the average case.  Because AWS is preferred, this value becomes minimum overhead for non-aws authentication.
-const CLIENT_TIMEOUT = 500 * time.Millisecond
+const CLIENT_TIMEOUT = 700 * time.Millisecond
 
 // IAMLogin actually performs the AWS IAM login to vault, and returns a logged in vault client
 func IAMLogin(authenticator *Authenticator) (client *api.Client, err error) {
