@@ -57,6 +57,7 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			path := "auth/cert/login"
 			verboseOutput(authenticator.Verbose, "  login path is %s/%s", apiConfig.Address, path)
 			verboseOutput(authenticator.Verbose, "  login role is %s", authenticator.Role)
+			verboseOutput(authenticator.Verbose, "  login Data: %s\n", loginData)
 
 			loginSecret, err := client.Logical().Write(path, loginData)
 			if err != nil {
