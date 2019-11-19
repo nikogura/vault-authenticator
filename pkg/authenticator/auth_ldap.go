@@ -12,6 +12,10 @@ import (
 
 // LDAPLogin logs the user into vault via LDAP and obtains a token.  (Really only intended for user usage)
 func LDAPLogin(authenticator *Authenticator) (client *api.Client, err error) {
+	if !authenticator.Prompt {
+		err = errors.New("Interactive prompts disabled.  LDAP Auth cannot proceed.")
+		return client, err
+	}
 	apiConfig := api.DefaultConfig()
 	err = apiConfig.ReadEnvironment()
 	if err != nil {
