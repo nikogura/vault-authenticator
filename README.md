@@ -6,7 +6,7 @@
 
 Useful golang functions for interacting with Vault.
 
-Vault is a great tool, but programming against it sometimes requires one to go more deeply than one wants to in order to navigate these deep waters.
+Vault is a great tool, but programming against it sometimes requires one to go more deeply than one wants to in order to navigate these waters.
 
 This library abstracts some of the work and provided some high level bindings so that the author of a tool that _uses_ Vault doesn't need to be an expert in Vault.
 
