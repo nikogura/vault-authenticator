@@ -205,7 +205,7 @@ func GetAzFargate(c chan string, verbose bool) {
 	}
 
 	if resp.StatusCode != 200 {
-		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
+		err = errors.New(fmt.Sprintf("non-success response code from %s", metadataUrl))
 		verboseOutput(verbose, err.Error())
 		return
 	}
@@ -254,7 +254,7 @@ func GetAzEcs(c chan string, verbose bool) {
 	}
 
 	if resp.StatusCode != 200 {
-		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
+		err = errors.New(fmt.Sprintf("non-success response code from %s", metadataUrl))
 		verboseOutput(verbose, err.Error())
 		return
 	}
@@ -302,7 +302,7 @@ func GetAzEc2(c chan string, verbose bool) {
 	}
 
 	if resp.StatusCode != 200 {
-		err = errors.Wrapf(err, "non-success response code from %s", metadataUrl)
+		err = errors.New(fmt.Sprintf("non-success response code from %s", metadataUrl))
 		verboseOutput(verbose, err.Error())
 		return
 	}
