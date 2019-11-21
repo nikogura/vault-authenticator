@@ -256,7 +256,8 @@ func EditSecret(client *api.Client, path string) (err error) {
 	var fetchedSecretOutput string
 
 	if secret != nil {
-		for k, v := range secret.Data {
+		data := secret.Data
+		for k, v := range data {
 			fetchedSecretOutput += fmt.Sprintf("%s: %s\n", k, v)
 		}
 	}
