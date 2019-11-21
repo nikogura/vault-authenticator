@@ -377,6 +377,11 @@ func CopySecret(client *api.Client, oldpath string, newpath string) (err error) 
 		return err
 	}
 
+	if secret == nil {
+		err = errors.New(fmt.Sprintf("No secret at %s", oldpath))
+		return err
+	}
+
 	err = PutSecret(client, newpath, secret.Data)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to put secret")
