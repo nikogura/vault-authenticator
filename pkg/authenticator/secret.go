@@ -175,6 +175,7 @@ func SecretsForRole(client *api.Client, role string, env string, verbose bool) (
 						verboseOutput(verbose, "    ... it's a TLS Cert")
 						dir := filepath.Base(path)
 						keyBase := filepath.Base(dir)
+						verboseOutput(verbose, "      ... base is %s", keyBase)
 						for _, key := range TLSSecretKeys {
 							keyName := fmt.Sprintf("%s.%s", keyBase, TLSSecretKeyAbbrev[key])
 							v, ok := secretData[key]
