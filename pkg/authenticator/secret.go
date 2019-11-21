@@ -377,7 +377,7 @@ func CopySecret(client *api.Client, oldpath string, newpath string) (err error) 
 		return err
 	}
 
-	if secret == nil {
+	if secret == nil || len(secret.Data["data"].(map[string]interface{})) == 0 {
 		err = errors.New(fmt.Sprintf("No secret at %s", oldpath))
 		return err
 	}
