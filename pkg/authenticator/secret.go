@@ -396,11 +396,13 @@ func MoveSecret(client *api.Client, oldpath string, newpath string) (err error) 
 	err = CopySecret(client, oldpath, newpath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to copy secret")
+		return err
 	}
 
 	err = DeleteSecrets(client, oldpath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to delete secret from original location")
+		return err
 	}
 
 	return err
