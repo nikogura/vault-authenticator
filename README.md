@@ -1,8 +1,4 @@
-# vaultlibs
-
-
-[![Status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiQ1hMb3dNeE4zYjFzUzZYMi9QekU1SlN0bksyVVY4QnE3WjRhVGw5MnB3T2U2cTZvQ2hYMlRqb3pNWXJoLytQR1N6WCtDY01pVUJHdVV4MkpuQnVKaE5RPSIsIml2UGFyYW1ldGVyU3BlYyI6InA4YVpZdU4ybDNRUmEvbE8iLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)](https://us-east-2.console.aws.amazon.com/codesuite/codebuild/projects/Vaultlibs/history?region=us-east-2)
-
+# vault-authenticator
 
 Useful golang functions for interacting with Vault.
 
@@ -21,7 +17,7 @@ To configure `authenticator`, create the object via it's constructor:
     
 Then set the address of the Vault server:
 
-	auth.SetAddress("https://vault.corp.scribd.com")
+	auth.SetAddress("https://vault.example.com")
 	
 	
 Set a private CA if you're using one:

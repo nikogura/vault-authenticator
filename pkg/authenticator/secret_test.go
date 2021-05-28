@@ -2,8 +2,8 @@ package authenticator
 
 import (
 	"fmt"
+	"github.com/nikogura/vaulttest/pkg/vaulttest"
 	"github.com/phayes/freeport"
-	"github.com/scribd/vaulttest/pkg/vaulttest"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -13,7 +13,7 @@ import (
 )
 
 var tmpDir string
-var testVault *vaulttest.VaultDevServer
+var testVault *vaulttest.VaultServer
 
 func TestMain(m *testing.M) {
 	setUp()
@@ -41,10 +41,10 @@ func setUp() {
 
 	testAddress := fmt.Sprintf("127.0.0.1:%d", port)
 
-	testVault = vaulttest.NewVaultDevServer(testAddress)
+	testVault = vaulttest.NewVaultServer(testAddress)
 
 	if !testVault.Running {
-		testVault.ServerStart()
+		testVault.DevServerStart()
 
 		// Create normal Secret engines
 		client := testVault.VaultTestClient()

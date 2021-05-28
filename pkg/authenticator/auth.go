@@ -222,7 +222,7 @@ func ApiConfig(address string, cacert string) (config *api.Config, err error) {
 	if cacert != "" {
 		ok := rootCAs.AppendCertsFromPEM([]byte(cacert))
 		if !ok {
-			err = errors.New("Failed to add scribd root cert to system CA bundle")
+			err = errors.New("Failed to add root cert to system CA bundle")
 			return config, err
 		}
 	}
