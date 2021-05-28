@@ -15,6 +15,7 @@ import (
 	"strings"
 )
 
+// TLSSecretKeys
 var TLSSecretKeys = []string{
 	"private_key",
 	"certificate",
@@ -337,6 +338,7 @@ func GetSecrets(client *api.Client, paths []string) (secrets []*api.Secret, err 
 		secret, err := GetSecret(client, path)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to fetch secret from path %s", path)
+			return secrets, err
 		}
 
 		if secret != nil {

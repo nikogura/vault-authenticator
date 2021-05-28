@@ -11,7 +11,10 @@ import (
 	"os/user"
 )
 
+// VAULT_TOKEN_ENV_VAR The default env var for vault tokens - i.e. VAULT_TOKEN
 const VAULT_TOKEN_ENV_VAR = "VAULT_TOKEN"
+
+// VAULT_AUTH_FAIL  Canned error message for vault login failure.
 const VAULT_AUTH_FAIL = "vault login fail.  It didn't blow up, but also didn't return a token, either."
 
 // Authenticator What handles the authentication to Vault- by whatever supported methods you configure.  Authenticator will try them in order and return the first one that is successful.
