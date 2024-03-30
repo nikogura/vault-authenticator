@@ -1,13 +1,7 @@
 # vault-authenticator
-[![Current Release](https://img.shields.io/github/release/nikogura/vault-authenticator.svg)](https://img.shields.io/github/release/nikogura/vault-authenticator.svg)
-
-[![Circle CI](https://circleci.com/gh/nikogura/vault-authenticator.svg?style=shield)](https://circleci.com/gh/nikogura/vault-authenticator)
-
 [![Go Report Card](https://goreportcard.com/badge/github.com/nikogura/vault-authenticator)](https://goreportcard.com/report/github.com/nikogura/vault-authenticator)
 
 [![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/vault-authenticator/pkg/vault-authenticator)
-
-[![Coverage Status](https://codecov.io/gh/nikogura/vault-authenticator/branch/master/graph/badge.svg)](https://codecov.io/gh/nikogura/vault-authenticator)
 
 Useful golang functions for interacting with Vault.
 
