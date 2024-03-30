@@ -42,6 +42,10 @@ func TLSLogin(authenticator *Authenticator) (client *api.Client, err error) {
 			apiConfig.ConfigureTLS(&tlsConfig)
 
 			client, err = api.NewClient(apiConfig)
+			if err != nil {
+				err = errors.Wrapf(err, "failed creating vault api client")
+				return client, err
+			}
 
 			loginData := make(map[string]interface{})
 			loginData["name"] = authenticator.Role

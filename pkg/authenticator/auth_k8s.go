@@ -38,7 +38,7 @@ func K8sLogin(authenticator *Authenticator) (client *api.Client, err error) {
 
 	verboseOutput(authenticator.Verbose, "  successfully read k8s JWT token in pod")
 
-	//curl -X POST -H "Content-type: application/json" https://vault-prod.inf.scribd.com:8200/v1/auth/k8s-bravo/login -d '{"role": "test-role", "jwt":”<jwt of principal>”}'
+	//curl -X POST -H "Content-type: application/json" https://vault.example.com:8200/v1/auth/k8s-bravo/login -d '{"role": "test-role", "jwt":”<jwt of principal>”}'
 	data := map[string]string{
 		"role": authenticator.Role,
 		"jwt":  string(jwtBytes),

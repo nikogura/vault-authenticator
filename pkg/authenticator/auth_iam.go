@@ -158,7 +158,7 @@ func DetectAws(c chan bool, verbose bool) {
 	c <- false
 }
 
-// GetAwsRegion Attemts to find the Availability Zone for the running instance, and derives the Region by truncating the trailing letters off that AZ.  i.e. 'us-east-2a' becomes 'us-east-2'.  There doesn't appear to be an official means to get the Region, which is required by the STS signing request, but the AZ appears to be of a fairly constant form.
+// GetAwsRegion Attempts to find the Availability Zone for the running instance, and derives the Region by truncating the trailing letters off that AZ.  i.e. 'us-east-2a' becomes 'us-east-2'.  There doesn't appear to be an official means to get the Region, which is required by the STS signing request, but the AZ appears to be of a fairly constant form.
 func GetAwsRegion(verbose bool) (region string) {
 	c := make(chan string)
 
